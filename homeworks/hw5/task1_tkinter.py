@@ -9,7 +9,7 @@ class Window():
     def __init__(self):
         self.root = Tk()
         self.root.title("")
-        self.width  = self.root.winfo_screenwidth()
+        self.width = self.root.winfo_screenwidth()
         self.height = self.root.winfo_screenheight()
         self.root.geometry(f'{self.width}x{self.height}')
         self.canvas = Canvas(self.root, bg="#777777", height=self.height, width=self.width)
@@ -264,7 +264,6 @@ class Window():
         self.canvas.tag_bind(id, "<Button-3>", self.set_id_block)
         self.canvas.tag_bind(id, "<B1-Motion>", self.motion_block)
         self.canvas.tag_bind(id, "<B3-Motion>", self.rotate_block)
-        
 
     def create_button_go(self):
         button = Button(
