@@ -1,4 +1,7 @@
+import time
 import heapq
+
+TOLERANCE = 20
 
 
 class PriorityQueue:
@@ -6,10 +9,10 @@ class PriorityQueue:
         self.pq = []
 
     def add(self, el, priority):
-        heapq.heappush(self.pq, (priority, el))
+        heapq.heappush(self.pq, (priority, time.time(), el))
 
     def pop(self):
-        _, el = heapq.heappop(self.pq)
+        _, _, el = heapq.heappop(self.pq)
         return el
 
     def is_empty(self):
@@ -23,13 +26,18 @@ class Node:
 
     @property
     def children(self):
-        return self.get_childs(self.state)
+        child_states = self.get_childs(self.state)
+        return [Node(c, self.get_childs) for c in child_states]
 
     def __eq__(self, other):
-        return self.state == other.state
+        x1, y1, _ = self.state
+        x2, y2, _ = other.state
+        x_close = abs(x1 - x2) <= TOLERANCE
+        y_close = abs(y1 - y2) <= TOLERANCE
+        return x_close and y_close
 
     def __hash__(self):
-        return str(self.state)
+        return hash(self.state)
 
 
 class AstarSearch:
@@ -49,6 +57,7 @@ class AstarSearch:
         que.add(start_node, 0)
         parents = {start_node: None}
         cost = {start_node: 0}
+        current_node = start_node
 
         while not que.is_empty():
             current_node = que.pop()
@@ -59,11 +68,14 @@ class AstarSearch:
                 child_cost = cost[current_node] + self.metric(child_node.state, current_node.state)
                 if child_node not in cost or child_cost < cost[child_node]:
                     cost[child_node] = child_cost
-                    priority = child_cost + self.heuristic(child_node.state)
+                    priority = child_cost + self.heuristic(child_node.state, target_node.state)
                     parents[child_node] = current_node
                     que.add(child_node, priority)
 
-        trajectory = self.restore_trajectory(parents, target_node)
+        if current_node != target_node:
+            return []
+        trajectory = self.restore_trajectory(parents, current_node)
+        trajectory = [node.state for node in trajectory]
         return trajectory
 
     @staticmethod
@@ -80,4 +92,4 @@ class AstarSearch:
 
 
 def discrete_state(x, y, yaw):
-    return round(x), round(y), round(yaw)
+    return round(x), round(y), round(yaw, 2)

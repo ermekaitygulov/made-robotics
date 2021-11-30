@@ -1,6 +1,8 @@
 from tkinter import *
 import math
-from sympy import Point, Polygon
+# from sympy import Point, Polygon
+from shapely.geometry import Polygon
+from A_star import AstarSearch
 
 '''================= Your classes and methods ================='''
 
@@ -29,21 +31,53 @@ def get_polygon_from_position(position):
     x, y, yaw = position
     points = [(x - 50, y - 100), (x + 50, y - 100), (x + 50, y + 100), (x - 50, y + 100)]
     new_points = rotate(points, yaw * 180 / math.pi, (x, y))
-    return Polygon(*list(map(Point, new_points)))
+    return Polygon(new_points)
 
 
 def get_polygon_from_obstacle(obstacle):
     points = [(obstacle[0], obstacle[1]), (obstacle[2], obstacle[3]), (obstacle[4], obstacle[5]),
               (obstacle[6], obstacle[7])]
-    return Polygon(*list(map(Point, points)))
+    return Polygon(points)
 
 
 def collides(position, obstacle):
-    return get_polygon_from_position(position).intersection(get_polygon_from_obstacle(obstacle))
+    return get_polygon_from_position(position).intersects(get_polygon_from_obstacle(obstacle))
+
+
+def l2_heuristic(state1, state2):
+    x1, y1, _ = state1
+    x2, y2, _ = state2
+    return (x1 - x2) ** 2 + (y1 - y2) ** 2
+
+
+def next_holonomic_states(state):
+    x, y, yaw = state
+    next_states = []
+    for i in [-10, 10]:
+        for j in [-10, 10]:
+            next_states.append((x + i, y + j, yaw))
+    return next_states
 
 
 class Window:
     """================= Your Main Function ================="""
+
+    def __init__(self):
+        self.planner = AstarSearch(self.obstacle_aware_l2, l2_heuristic, next_holonomic_states)
+        self.root = Tk()
+        self.root.title("")
+        self.width = self.root.winfo_screenwidth()
+        self.height = self.root.winfo_screenheight()
+        self.root.geometry(f'{self.width}x{self.height}')
+        self.canvas = Canvas(self.root, bg="#777777", height=self.height, width=self.width)
+        self.canvas.pack()
+        # self.points = [0, 500, 500/2, 0, 500, 500]
+
+    def obstacle_aware_l2(self, state1, state2):
+        for obstacle in self.get_obstacles():
+            if collides(state1, obstacle) or collides(state2, obstacle):
+                return math.inf
+        return l2_heuristic(state1, state2)
 
     def go(self, event):
 
@@ -60,6 +94,20 @@ class Window:
             if collides(self.get_start_position(), obstacle):
                 number_of_collisions += 1
         print("Start position collides with", number_of_collisions, "obstacles")
+
+        start = self.get_start_position()
+        target = self.get_target_position()
+        trajectory = self.planner.build_trajectory(start, target)
+        print(trajectory)
+        self.draw_trajectory(trajectory)
+
+    def draw_trajectory(self, trajectory):
+        for (center_x, center_y, _) in trajectory:
+            block = [[center_x - 10, center_y - 10],
+                     [center_x + 10, center_y - 10],
+                     [center_x + 10, center_y + 10],
+                     [center_x - 10, center_y + 10]]
+            id = self.draw_block(block, "red")
 
     '''================= Interface Methods ================='''
 
@@ -324,16 +372,6 @@ class Window:
         root.bind("<Delete>", self.delete_block)
 
         root.mainloop()
-
-    def __init__(self):
-        self.root = Tk()
-        self.root.title("")
-        self.width = self.root.winfo_screenwidth()
-        self.height = self.root.winfo_screenheight()
-        self.root.geometry(f'{self.width}x{self.height}')
-        self.canvas = Canvas(self.root, bg="#777777", height=self.height, width=self.width)
-        self.canvas.pack()
-        # self.points = [0, 500, 500/2, 0, 500, 500]
 
 
 if __name__ == "__main__":
