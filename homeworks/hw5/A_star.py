@@ -41,10 +41,12 @@ class Node:
 
 
 class AstarSearch:
-    def __init__(self, metric, heuristic, get_next_states):
+    def __init__(self, metric, heuristic, get_next_states, window):
         self.metric = metric
         self.heuristic = heuristic
         self.get_next_states = get_next_states
+        self.window = window
+        self.already_drawn = {}
 
     def build_trajectory(self, start, target):
         start_node = self.to_node(start)
@@ -74,6 +76,7 @@ class AstarSearch:
 
         if current_node != target_node:
             return []
+        self.delete_drawn()
         trajectory = self.restore_trajectory(parents, current_node)
         trajectory = [node.state for node in trajectory]
         return trajectory
@@ -89,6 +92,21 @@ class AstarSearch:
     def to_node(self, state):
         state = Node(state, self.get_next_states)
         return state
+
+    def draw_state(self, state, color):
+        if state in self.already_drawn:
+            block = self.already_drawn[state]
+            self.window.canvas.delete(block)
+        center_x, center_y, _ = state
+        block = [[center_x - 10, center_y - 10],
+                 [center_x + 10, center_y - 10],
+                 [center_x + 10, center_y + 10],
+                 [center_x - 10, center_y + 10]]
+        self.window.draw_block(block, color)
+
+    def delete_drawn(self):
+        for block in self.already_drawn.values():
+            self.window.canvas.delete(block)
 
 
 def discrete_state(x, y, yaw):

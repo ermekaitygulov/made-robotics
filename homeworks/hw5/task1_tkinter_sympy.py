@@ -63,7 +63,8 @@ class Window:
     """================= Your Main Function ================="""
 
     def __init__(self):
-        self.planner = AstarSearch(self.obstacle_aware_l2, l2_heuristic, next_holonomic_states)
+        self.planner = AstarSearch(self.obstacle_aware_l2, l2_heuristic, next_holonomic_states, self)
+        self.prev_trajectory = []
         self.root = Tk()
         self.root.title("")
         self.width = self.root.winfo_screenwidth()
@@ -80,6 +81,7 @@ class Window:
         return l2_heuristic(state1, state2)
 
     def go(self, event):
+        self.delete_prev_trajectory()
 
         # Write your code here
 
@@ -107,7 +109,11 @@ class Window:
                      [center_x + 10, center_y - 10],
                      [center_x + 10, center_y + 10],
                      [center_x - 10, center_y + 10]]
-            id = self.draw_block(block, "red")
+            self.prev_trajectory.append(self.draw_block(block, "#f56e6e"))
+
+    def delete_prev_trajectory(self, *args):
+        for block in self.prev_trajectory:
+            self.canvas.delete(block)
 
     '''================= Interface Methods ================='''
 
@@ -324,6 +330,17 @@ class Window:
         button.place(rely=0.0, relx=0.0, x=200, y=100, anchor=SE, width=200, height=100)
         button.bind("<Button-1>", self.create_block)
 
+    def create_button_clear(self):
+        button = Button(
+            text="Remove Trajectory",
+            bg="#555555",
+            activebackground="blue",
+            borderwidth=0
+        )
+
+        button.place(rely=0.0, relx=0.0, x=400, y=100, anchor=SE, width=200, height=100)
+        button.bind("<Button-1>", self.delete_prev_trajectory)
+
     def create_green_block(self, center_x):
         block = [[center_x - 50, 100],
                  [center_x + 50, 100],
@@ -366,6 +383,7 @@ class Window:
 
         self.create_button_create()
         self.create_button_go()
+        self.create_button_clear()
         self.create_green_block(self.width / 2)
         self.create_purple_block(self.width / 2, self.height)
 
