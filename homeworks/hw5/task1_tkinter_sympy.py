@@ -3,10 +3,13 @@ import math
 # from sympy import Point, Polygon
 from shapely.geometry import Polygon
 from A_star import AstarSearch
+from A_star import YAW_TOLERANCE as YAW_STEP
 
 '''================= Your classes and methods ================='''
+TRAJECTORY_COLOR = "#f56e6e"
+FRONTIER_COLOR = "#ced2d9"
 
-
+COORD_STEP = 20
 # These functions will help you to check collisions with obstacles
 
 
@@ -53,9 +56,34 @@ def l2_heuristic(state1, state2):
 def next_holonomic_states(state):
     x, y, yaw = state
     next_states = []
-    for i in [-10, 10]:
-        for j in [-10, 10]:
+    for i in [-COORD_STEP, 0, COORD_STEP]:
+        for j in [-COORD_STEP, 0, COORD_STEP]:
+            if i == 0 and j == 0:
+                continue
             next_states.append((x + i, y + j, yaw))
+    return next_states
+
+
+def sign(x):
+    if x == 0:
+        return 1
+    return x / abs(x)
+
+
+def next_nonholonomic_states(state):
+    x, y, yaw = state
+    next_states = []
+    for dir in [COORD_STEP]:
+        for yaw_ch in [-YAW_STEP, 0, YAW_STEP]:
+            new_yaw = yaw + yaw_ch
+            if abs(new_yaw) > math.pi:
+                new_yaw = - sign(new_yaw) * (math.pi - (abs(new_yaw) % math.pi))
+
+            x_ch = dir * math.sin(new_yaw)
+            y_ch = -dir * math.cos(new_yaw)
+            new_x = x + x_ch
+            new_y = y + y_ch
+            next_states.append((new_x, new_y, new_yaw))
     return next_states
 
 
@@ -63,7 +91,7 @@ class Window:
     """================= Your Main Function ================="""
 
     def __init__(self):
-        self.planner = AstarSearch(self.obstacle_aware_l2, l2_heuristic, next_holonomic_states, self)
+        self.planner = AstarSearch(self.obstacle_aware_l2, l2_heuristic, next_nonholonomic_states)
         self.prev_trajectory = []
         self.root = Tk()
         self.root.title("")
@@ -99,17 +127,19 @@ class Window:
 
         start = self.get_start_position()
         target = self.get_target_position()
-        trajectory = self.planner.build_trajectory(start, target)
+        trajectory, frontier = self.planner.build_trajectory(start, target)
         print(trajectory)
-        self.draw_trajectory(trajectory)
+        self.draw_trajectory(frontier, FRONTIER_COLOR)
+        self.draw_trajectory(trajectory, TRAJECTORY_COLOR)
 
-    def draw_trajectory(self, trajectory):
-        for (center_x, center_y, _) in trajectory:
-            block = [[center_x - 10, center_y - 10],
-                     [center_x + 10, center_y - 10],
-                     [center_x + 10, center_y + 10],
-                     [center_x - 10, center_y + 10]]
-            self.prev_trajectory.append(self.draw_block(block, "#f56e6e"))
+    def draw_trajectory(self, trajectory, color):
+        for (center_x, center_y, yaw) in trajectory:
+            block = [[center_x - 1, center_y - 5],
+                     [center_x + 1, center_y - 5],
+                     [center_x + 1, center_y + 5],
+                     [center_x - 1, center_y + 5]]
+            block = rotate(block, yaw * 180 / math.pi, (center_x, center_y))
+            self.prev_trajectory.append(self.draw_block(block, color))
 
     def delete_prev_trajectory(self, *args):
         for block in self.prev_trajectory:
